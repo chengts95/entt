@@ -232,6 +232,7 @@ class basic_registry {
         auto &&cpool = pools[id];
 
         if(!cpool) {
+            vtable[id] = []() { return static_cast<base_type *>(new storage_type<Component>{}); };
             cpool.reset(new storage_type<Component>{});
             cpool->bind(forward_as_any(*this));
         }
@@ -343,6 +344,27 @@ public:
     template<typename Component>
     [[nodiscard]] decltype(auto) storage(const id_type id = type_hash<Component>::value()) {
         return assure<Component>(id);
+    }
+
+    base_type *emplace_or_replace_storage(const id_type id, base_type *storage) {
+        auto &&cpool = pools[id];
+
+        // if(!cpool) {
+        cpool.reset(storage);
+        cpool->bind(forward_as_any(*this));
+        //}
+
+        return cpool.get();
+    }
+
+    base_type *construct_storage(const id_type id) const {
+        const auto f = vtable.find(id);
+        if(f != vtable.end()) {
+            auto func = f->second;
+            return func();
+        }
+
+        return nullptr;
     }
 
     /**
@@ -1502,6 +1524,7 @@ public:
     }
 
 private:
+    dense_hash_map<id_type, base_type *(*)(), identity> vtable;
     dense_hash_map<id_type, std::unique_ptr<base_type>, identity> pools{};
     dense_hash_map<id_type, basic_any<0u>, identity> vars{};
     std::vector<group_data> groups{};
