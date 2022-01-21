@@ -367,6 +367,13 @@ public:
         return nullptr;
     }
 
+    auto &get_vtable() {
+        return vtable;
+    }
+
+    auto &&get_vtable() const {
+        return vtable;
+    }
     /**
      * @brief Returns the storage for a given component type.
      *
