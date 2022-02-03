@@ -1496,7 +1496,6 @@ public:
 private:
     dense_map<id_type, base_type *(*)(), identity> vtable;
     dense_map<id_type, std::unique_ptr<base_type>, identity> pools{};
-    dense_map<id_type, basic_any<0u>, identity> vars{};
     std::vector<group_data> groups{};
     std::vector<entity_type> entities{};
     entity_type free_list{tombstone};
