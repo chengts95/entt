@@ -1,8 +1,8 @@
 #include <chrono>
-#include <cstddef>
 #include <cstdint>
 #include <iostream>
-#include <iterator>
+#include <utility>
+#include <vector>
 #include <gtest/gtest.h>
 #include <entt/core/type_info.hpp>
 #include <entt/entity/registry.hpp>
@@ -13,15 +13,13 @@ struct position {
 };
 
 struct velocity: position {};
-struct stable_position: position {};
 
-template<std::size_t>
-struct comp { int x; };
-
-template<>
-struct entt::component_traits<stable_position>: basic_component_traits {
+struct stable_position: position {
     static constexpr auto in_place_delete = true;
 };
+
+template<auto>
+struct comp { int x; };
 
 struct timer final {
     timer()

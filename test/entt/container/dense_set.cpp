@@ -1,6 +1,7 @@
-#include <cmath>
+#include <cstddef>
 #include <functional>
 #include <iterator>
+#include <memory>
 #include <tuple>
 #include <type_traits>
 #include <utility>
@@ -8,6 +9,8 @@
 #include <entt/container/dense_set.hpp>
 #include <entt/core/memory.hpp>
 #include <entt/core/utility.hpp>
+#include "../common/throwing_allocator.hpp"
+#include "../common/tracked_memory_resource.hpp"
 
 struct transparent_equal_to {
     using is_transparent = void;
@@ -85,7 +88,7 @@ TEST(DenseSet, Functionalities) {
     ASSERT_FALSE(set.contains(0u));
 }
 
-TEST(DenseSet, Contructors) {
+TEST(DenseSet, Constructors) {
     static constexpr std::size_t minimum_bucket_count = 8u;
     entt::dense_set<int> set;
 
@@ -815,3 +818,53 @@ TEST(DenseSet, Reserve) {
     ASSERT_EQ(set.bucket_count(), 2 * minimum_bucket_count);
     ASSERT_EQ(set.bucket_count(), entt::next_power_of_two(std::ceil(minimum_bucket_count / set.max_load_factor())));
 }
+
+TEST(DenseSet, ThrowingAllocator) {
+    using allocator = test::throwing_allocator<std::size_t>;
+    using packed_allocator = test::throwing_allocator<std::pair<std::size_t, std::size_t>>;
+    using packed_exception = typename packed_allocator::exception_type;
+
+    static constexpr std::size_t minimum_bucket_count = 8u;
+    entt::dense_set<std::size_t, std::hash<std::size_t>, std::equal_to<std::size_t>, allocator> set{};
+
+    packed_allocator::trigger_on_allocate = true;
+
+    ASSERT_EQ(set.bucket_count(), minimum_bucket_count);
+    ASSERT_THROW(set.reserve(2u * set.bucket_count()), packed_exception);
+    ASSERT_EQ(set.bucket_count(), minimum_bucket_count);
+}
+
+#if defined(ENTT_HAS_TRACKED_MEMORY_RESOURCE)
+
+TEST(DenseSet, NoUsesAllocatorConstruction) {
+    using allocator = std::pmr::polymorphic_allocator<int>;
+
+    test::tracked_memory_resource memory_resource{};
+    entt::dense_set<int, std::hash<int>, std::equal_to<int>, allocator> set{&memory_resource};
+
+    set.reserve(1u);
+    memory_resource.reset();
+    set.emplace(0);
+
+    ASSERT_TRUE(set.get_allocator().resource()->is_equal(memory_resource));
+    ASSERT_EQ(memory_resource.do_allocate_counter(), 0u);
+    ASSERT_EQ(memory_resource.do_deallocate_counter(), 0u);
+}
+
+TEST(DenseSet, UsesAllocatorConstruction) {
+    using string_type = typename test::tracked_memory_resource::string_type;
+    using allocator = std::pmr::polymorphic_allocator<string_type>;
+
+    test::tracked_memory_resource memory_resource{};
+    entt::dense_set<string_type, std::hash<string_type>, std::equal_to<string_type>, allocator> set{&memory_resource};
+
+    set.reserve(1u);
+    memory_resource.reset();
+    set.emplace(test::tracked_memory_resource::default_value);
+
+    ASSERT_TRUE(set.get_allocator().resource()->is_equal(memory_resource));
+    ASSERT_GT(memory_resource.do_allocate_counter(), 0u);
+    ASSERT_EQ(memory_resource.do_deallocate_counter(), 0u);
+}
+
+#endif

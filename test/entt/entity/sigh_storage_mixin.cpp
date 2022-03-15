@@ -1,5 +1,4 @@
 #include <iterator>
-#include <type_traits>
 #include <gtest/gtest.h>
 #include <entt/entity/component.hpp>
 #include <entt/entity/registry.hpp>
@@ -8,6 +7,7 @@
 struct empty_type {};
 
 struct stable_type {
+    static constexpr auto in_place_delete = true;
     int value{};
 };
 
@@ -18,11 +18,6 @@ struct non_default_constructible {
         : value{v} {}
 
     int value{};
-};
-
-template<>
-struct entt::component_traits<stable_type>: basic_component_traits {
-    static constexpr auto in_place_delete = true;
 };
 
 struct counter {

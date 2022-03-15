@@ -1,10 +1,14 @@
 #include <algorithm>
-#include <string>
+#include <cstdint>
+#include <cstring>
+#include <iterator>
 #include <type_traits>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 #include <gtest/gtest.h>
 #include <entt/core/any.hpp>
+#include <entt/core/type_info.hpp>
 
 struct empty {
     ~empty() {
@@ -1289,6 +1293,23 @@ TEST_F(Any, NotCopyableType) {
     ASSERT_TRUE(copy.owner());
 }
 
+TEST_F(Any, NotCopyableValueType) {
+    std::vector<entt::any> vec{};
+    vec.emplace_back(std::in_place_type<not_copyable>);
+    vec.shrink_to_fit();
+
+    ASSERT_EQ(vec.size(), 1u);
+    ASSERT_EQ(vec.capacity(), 1u);
+    ASSERT_TRUE(vec[0u]);
+
+    // strong exception guarantee due to noexcept move ctor
+    vec.emplace_back(std::in_place_type<not_copyable>);
+
+    ASSERT_EQ(vec.size(), 2u);
+    ASSERT_TRUE(vec[0u]);
+    ASSERT_TRUE(vec[1u]);
+}
+
 TEST_F(Any, NotMovableType) {
     entt::any any{std::in_place_type<not_movable>};
     entt::any other{std::in_place_type<not_movable>};
@@ -1434,11 +1455,11 @@ TEST_F(Any, DeducedArrayType) {
 
     ASSERT_TRUE(any);
     ASSERT_EQ(any.type(), entt::type_id<const char *>());
-    ASSERT_EQ((strcmp("array of char", entt::any_cast<const char *>(any))), 0);
+    ASSERT_EQ((std::strcmp("array of char", entt::any_cast<const char *>(any))), 0);
 
     any = "another array of char";
 
     ASSERT_TRUE(any);
     ASSERT_EQ(any.type(), entt::type_id<const char *>());
-    ASSERT_EQ((strcmp("another array of char", entt::any_cast<const char *>(any))), 0);
+    ASSERT_EQ((std::strcmp("another array of char", entt::any_cast<const char *>(any))), 0);
 }

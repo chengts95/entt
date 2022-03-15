@@ -3,6 +3,12 @@
 #
 
 include(FetchContent)
+include(CheckCXXSourceCompiles)
+
+check_cxx_source_compiles("
+    #include<version>
+    int main() { return 0; }
+" ENTT_HAS_HEADER_VERSION)
 
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
@@ -67,6 +73,14 @@ function(SETUP_TARGET TARGET_NAME)
             NOMINMAX
             ${ARGN}
     )
+
+    if(ENTT_HAS_HEADER_VERSION)
+        target_compile_definitions(
+            ${TARGET_NAME}
+            PRIVATE
+                ENTT_HAS_HEADER_VERSION
+        )
+    endif()
 endfunction()
 
 add_library(odr OBJECT odr.cpp)
@@ -184,6 +198,7 @@ SETUP_BASIC_TEST(utility entt/core/utility.cpp)
 
 # Test entity
 
+SETUP_BASIC_TEST(component entt/entity/component.cpp)
 SETUP_BASIC_TEST(entity entt/entity/entity.cpp)
 SETUP_BASIC_TEST(group entt/entity/group.cpp)
 SETUP_BASIC_TEST(handle entt/entity/handle.cpp)

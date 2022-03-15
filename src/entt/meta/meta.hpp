@@ -15,6 +15,7 @@
 #include "../core/utility.hpp"
 #include "adl_pointer.hpp"
 #include "ctx.hpp"
+#include "fwd.hpp"
 #include "node.hpp"
 #include "range.hpp"
 #include "type_traits.hpp"
@@ -282,21 +283,15 @@ public:
         return *this;
     }
 
-    /**
-     * @brief Returns the type of the underlying object.
-     * @return The type of the underlying object, if any.
-     */
+    /*! @copydoc any::type */
     [[nodiscard]] inline meta_type type() const ENTT_NOEXCEPT;
 
-    /**
-     * @brief Returns an opaque pointer to the contained instance.
-     * @return An opaque pointer the contained instance, if any.
-     */
+    /*! @copydoc any::data */
     [[nodiscard]] const void *data() const ENTT_NOEXCEPT {
         return storage.data();
     }
 
-    /*! @copydoc data */
+    /*! @copydoc any::data */
     [[nodiscard]] void *data() ENTT_NOEXCEPT {
         return storage.data();
     }
@@ -468,12 +463,7 @@ public:
         return false;
     }
 
-    /**
-     * @brief Replaces the contained object by creating a new instance directly.
-     * @tparam Type Type of object to use to initialize the wrapper.
-     * @tparam Args Types of arguments to use to construct the new instance.
-     * @param args Parameters to use to construct the instance.
-     */
+    /*! @copydoc any::emplace */
     template<typename Type, typename... Args>
     void emplace(Args &&...args) {
         release();
@@ -482,21 +472,13 @@ public:
         node = internal::meta_node<std::remove_const_t<std::remove_reference_t<Type>>>::resolve();
     }
 
-    /**
-     * @brief Copy assigns a value to the contained object without replacing it.
-     * @param other The value to assign to the contained object.
-     * @return True in case of success, false otherwise.
-     */
+    /*! @copydoc any::assign */
     bool assign(const meta_any &other);
 
-    /**
-     * @brief Move assigns a value to the contained object without replacing it.
-     * @param other The value to assign to the contained object.
-     * @return True in case of success, false otherwise.
-     */
+    /*! @copydoc any::assign */
     bool assign(meta_any &&other);
 
-    /*! @brief Destroys contained object */
+    /*! @copydoc any::reset */
     void reset() {
         release();
         vtable = &basic_vtable<void>;
@@ -561,32 +543,22 @@ public:
         return !(node == nullptr);
     }
 
-    /**
-     * @brief Checks if two wrappers differ in their content.
-     * @param other Wrapper with which to compare.
-     * @return False if the two objects differ in their content, true otherwise.
-     */
+    /*! @copydoc any::operator== */
     [[nodiscard]] bool operator==(const meta_any &other) const {
         return (!node && !other.node) || (node && other.node && *node->info == *other.node->info && storage == other.storage);
     }
 
-    /**
-     * @brief Aliasing constructor.
-     * @return A wrapper that shares a reference to an unmanaged object.
-     */
+    /*! @copydoc any::as_ref */
     [[nodiscard]] meta_any as_ref() ENTT_NOEXCEPT {
         return meta_any{*this, storage.as_ref()};
     }
 
-    /*! @copydoc as_ref */
+    /*! @copydoc any::as_ref */
     [[nodiscard]] meta_any as_ref() const ENTT_NOEXCEPT {
         return meta_any{*this, storage.as_ref()};
     }
 
-    /**
-     * @brief Returns true if a wrapper owns its object, false otherwise.
-     * @return True if the wrapper owns its object, false otherwise.
-     */
+    /*! @copydoc any::owner */
     [[nodiscard]] bool owner() const ENTT_NOEXCEPT {
         return storage.owner();
     }
@@ -1508,7 +1480,7 @@ public:
      * @param iter The actual iterator with which to build the meta iterator.
      */
     template<typename It>
-    explicit meta_iterator(It iter)
+    explicit meta_iterator(It iter) ENTT_NOEXCEPT
         : vtable{&basic_vtable<It>},
           handle{std::move(iter)} {}
 
@@ -1537,7 +1509,7 @@ public:
      * @brief Access operator for accessing the pointed opaque object.
      * @return The element to which the iterator points.
      */
-    [[nodiscard]] pointer operator->() const ENTT_NOEXCEPT {
+    [[nodiscard]] pointer operator->() const {
         return operator*();
     }
 
@@ -1715,7 +1687,7 @@ public:
      * @param iter The actual iterator with which to build the meta iterator.
      */
     template<bool KeyOnly, typename It>
-    meta_iterator(std::integral_constant<bool, KeyOnly>, It iter)
+    meta_iterator(std::integral_constant<bool, KeyOnly>, It iter) ENTT_NOEXCEPT
         : vtable{&basic_vtable<KeyOnly, It>},
           handle{std::move(iter)} {}
 
@@ -1744,7 +1716,7 @@ public:
      * @brief Access operator for accessing the pointed opaque object.
      * @return The element to which the iterator points.
      */
-    [[nodiscard]] pointer operator->() const ENTT_NOEXCEPT {
+    [[nodiscard]] pointer operator->() const {
         return operator*();
     }
 

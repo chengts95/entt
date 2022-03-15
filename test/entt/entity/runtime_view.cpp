@@ -1,18 +1,14 @@
 #include <algorithm>
-#include <iterator>
+#include <type_traits>
+#include <utility>
 #include <gtest/gtest.h>
-#include <entt/core/type_info.hpp>
 #include <entt/entity/component.hpp>
 #include <entt/entity/registry.hpp>
 #include <entt/entity/runtime_view.hpp>
 
 struct stable_type {
-    int value;
-};
-
-template<>
-struct entt::component_traits<stable_type>: basic_component_traits {
     static constexpr auto in_place_delete = true;
+    int value;
 };
 
 TEST(RuntimeView, Functionalities) {

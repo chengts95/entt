@@ -1,10 +1,13 @@
-#include <cstdint>
+#include <cstddef>
 #include <functional>
 #include <iterator>
 #include <memory>
+#include <tuple>
 #include <type_traits>
 #include <unordered_set>
+#include <utility>
 #include <gtest/gtest.h>
+#include <entt/core/hashed_string.hpp>
 #include <entt/core/type_traits.hpp>
 #include <entt/entity/component.hpp>
 #include <entt/entity/entity.hpp>
@@ -13,12 +16,8 @@
 struct empty_type {};
 
 struct stable_type {
-    int value;
-};
-
-template<>
-struct entt::component_traits<stable_type>: basic_component_traits {
     static constexpr auto in_place_delete = true;
+    int value;
 };
 
 struct non_default_constructible {
@@ -80,17 +79,19 @@ TEST(Registry, Context) {
     ASSERT_NE(ctx.find<const char>(), nullptr);
     ASSERT_NE(cctx.find<const int>(), nullptr);
 
-    ctx.erase<int>();
+    ASSERT_FALSE(ctx.erase<double>());
+    ASSERT_TRUE(ctx.erase<int>());
 
     ASSERT_TRUE(ctx.contains<const char>());
     ASSERT_FALSE(cctx.contains<const int>());
     ASSERT_NE(ctx.find<char>(), nullptr);
     ASSERT_EQ(cctx.find<int>(), nullptr);
 
-    ctx.erase<char>();
+    ASSERT_FALSE(ctx.erase<int>());
+    ASSERT_TRUE(ctx.erase<char>());
+
     ctx.emplace<char>('c');
     ctx.emplace<int>(42);
-    ;
 
     ASSERT_EQ(ctx.emplace<char>('a'), 'c');
     ASSERT_EQ(ctx.find<const char>(), cctx.find<char>());
@@ -104,6 +105,39 @@ TEST(Registry, Context) {
 
     ASSERT_EQ(ctx.find<double>(), nullptr);
     ASSERT_EQ(cctx.find<double>(), nullptr);
+}
+
+TEST(Registry, ContextHint) {
+    using namespace entt::literals;
+
+    entt::registry registry;
+    auto &ctx = registry.ctx();
+    const auto &cctx = std::as_const(registry).ctx();
+
+    ctx.emplace<int>(42);
+    ctx.emplace_hint<int>("other"_hs, 3);
+
+    ASSERT_TRUE(ctx.contains<int>());
+    ASSERT_TRUE(cctx.contains<const int>("other"_hs));
+    ASSERT_FALSE(ctx.contains<char>("other"_hs));
+
+    ASSERT_NE(cctx.find<const int>(), nullptr);
+    ASSERT_NE(ctx.find<int>("other"_hs), nullptr);
+    ASSERT_EQ(cctx.find<const char>("other"_hs), nullptr);
+
+    ASSERT_EQ(ctx.at<int>(), 42);
+    ASSERT_EQ(cctx.at<const int>("other"_hs), 3);
+
+    ASSERT_FALSE(ctx.erase<char>("other"_hs));
+    ASSERT_TRUE(ctx.erase<int>());
+
+    ASSERT_TRUE(cctx.contains<int>("other"_hs));
+    ASSERT_EQ(ctx.at<int>("other"_hs), 3);
+
+    ASSERT_TRUE(ctx.erase<int>("other"_hs));
+
+    ASSERT_FALSE(cctx.contains<int>("other"_hs));
+    ASSERT_EQ(ctx.find<int>("other"_hs), nullptr);
 }
 
 TEST(Registry, ContextAsRef) {

@@ -122,7 +122,7 @@ private:
 };
 
 template<typename CLhs, typename CRhs>
-[[nodiscard]] auto operator-(const storage_iterator<CLhs> &lhs, const storage_iterator<CRhs> &rhs) ENTT_NOEXCEPT {
+[[nodiscard]] std::ptrdiff_t operator-(const storage_iterator<CLhs> &lhs, const storage_iterator<CRhs> &rhs) ENTT_NOEXCEPT {
     return rhs.index() - lhs.index();
 }
 
@@ -170,11 +170,11 @@ public:
 
     extended_storage_iterator() = default;
 
-    extended_storage_iterator(It base, Other... other) ENTT_NOEXCEPT
+    extended_storage_iterator(It base, Other... other)
         : it{base, other...} {}
 
     template<typename... Args, typename = std::enable_if_t<(!std::is_same_v<Other, Args> && ...) && (std::is_constructible_v<Other, Args> && ...)>>
-    extended_storage_iterator(const extended_storage_iterator<It, Args...> &other) ENTT_NOEXCEPT
+    extended_storage_iterator(const extended_storage_iterator<It, Args...> &other)
         : it{other.it} {}
 
     extended_storage_iterator &operator++() ENTT_NOEXCEPT {
@@ -317,7 +317,8 @@ private:
     }
 
     void swap_at(const std::size_t lhs, const std::size_t rhs) final {
-        std::swap(element_at(lhs), element_at(rhs));
+        using std::swap;
+        swap(element_at(lhs), element_at(rhs));
     }
 
     void move_element(const std::size_t from, const std::size_t to) final {
@@ -854,11 +855,11 @@ public:
     }
 
     /**
-    * @brief Updates the instance assigned to a given entity in-place.
-    * @tparam Func Types of the function objects to invoke.
-    * @param entt A valid identifier.
-    * @param func Valid function objects.
-    */
+     * @brief Updates the instance assigned to a given entity in-place.
+     * @tparam Func Types of the function objects to invoke.
+     * @param entt A valid identifier.
+     * @param func Valid function objects.
+     */
     template<typename... Func>
     void patch([[maybe_unused]] const entity_type entt, Func &&...func) {
         ENTT_ASSERT(base_type::contains(entt), "Storage does not contain entity");

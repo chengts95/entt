@@ -74,15 +74,15 @@ struct sparse_set_iterator final {
         return (*this + -value);
     }
 
-    [[nodiscard]] reference operator[](const difference_type value) const {
+    [[nodiscard]] reference operator[](const difference_type value) const ENTT_NOEXCEPT {
         return packed->data()[index() - value];
     }
 
-    [[nodiscard]] pointer operator->() const {
+    [[nodiscard]] pointer operator->() const ENTT_NOEXCEPT {
         return packed->data() + index();
     }
 
-    [[nodiscard]] reference operator*() const {
+    [[nodiscard]] reference operator*() const ENTT_NOEXCEPT {
         return *operator->();
     }
 
@@ -96,7 +96,7 @@ private:
 };
 
 template<typename Type, typename Other>
-[[nodiscard]] auto operator-(const sparse_set_iterator<Type> &lhs, const sparse_set_iterator<Other> &rhs) ENTT_NOEXCEPT {
+[[nodiscard]] std::ptrdiff_t operator-(const sparse_set_iterator<Type> &lhs, const sparse_set_iterator<Other> &rhs) ENTT_NOEXCEPT {
     return rhs.index() - lhs.index();
 }
 
@@ -585,7 +585,7 @@ public:
      * @return The version for the given identifier if present, the tombstone
      * version otherwise.
      */
-    [[nodiscard]] version_type current(const entity_type entt) const {
+    [[nodiscard]] version_type current(const entity_type entt) const ENTT_NOEXCEPT {
         const auto elem = sparse_ptr(entt);
         constexpr auto fallback = entity_traits::to_version(tombstone);
         return elem ? entity_traits::to_version(*elem) : fallback;
@@ -752,7 +752,10 @@ public:
             if(const size_type to = entity_traits::to_entity(*it); to < from) {
                 --from;
                 move_element(from, to);
-                std::swap(packed[from], packed[to]);
+
+                using std::swap;
+                swap(packed[from], packed[to]);
+
                 const auto entity = static_cast<typename entity_traits::entity_type>(to);
                 sparse_ref(packed[to]) = entity_traits::combine(entity, entity_traits::to_integral(packed[to]));
                 *it = entity_traits::combine(static_cast<typename entity_traits::entity_type>(from), entity_traits::reserved);
@@ -790,7 +793,9 @@ public:
         swap_at(static_cast<size_type>(from), static_cast<size_type>(to));
         entt = entity_traits::combine(to, entity_traits::to_integral(packed[from]));
         other = entity_traits::combine(from, entity_traits::to_integral(packed[to]));
-        std::swap(packed[from], packed[to]);
+
+        using std::swap;
+        swap(packed[from], packed[to]);
     }
 
     /**

@@ -1,9 +1,8 @@
+#include <memory>
 #include <utility>
 #include <vector>
 #include <gtest/gtest.h>
 #include <entt/signal/sigh.hpp>
-#include "../common/throwing_allocator.hpp"
-#include "../common/throwing_type.hpp"
 
 struct sigh_listener {
     static void f(int &v) {
@@ -532,7 +531,7 @@ TEST_F(SigH, UnboundMemberFunction) {
 }
 
 TEST_F(SigH, CustomAllocator) {
-    test::throwing_allocator<entt::delegate<void(int)>> allocator;
+    std::allocator<void (*)(int)> allocator;
 
     auto test = [&](auto curr) {
         ASSERT_EQ(curr.get_allocator(), allocator);

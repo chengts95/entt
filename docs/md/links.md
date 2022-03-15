@@ -27,6 +27,9 @@ I hope this list can grow much more in the future:
     [Call of Duty: Vanguard](https://www.callofduty.com/vanguard) by
     [Sledgehammer Games](https://www.sledgehammergames.com/): I can neither
     confirm nor deny but there is a license I know in the credits.
+  * Apparently [D&D Dark Alliance](https://darkalliance.wizards.com) by
+    [Wizards of the Coast](https://company.wizards.com): your party, their
+    funeral.
   * [TiltedOnline](https://github.com/tiltedphoques/TiltedOnline) by
     [Tilted Phoques](https://github.com/tiltedphoques): Skyrim and Fallout 4 mod
     to play online.
@@ -74,7 +77,7 @@ I hope this list can grow much more in the future:
     arcade game about shooting dirty rocks in space, inspired by Asteroids.
   * [Wanderer](https://github.com/albin-johansson/wanderer): a 2D exploration
     based indie game.
-  * [Spelunky® Classic remake](https://github.com/dbeef/spelunky-psp): a truly
+  * [Spelunkyï¿½ Classic remake](https://github.com/dbeef/spelunky-psp): a truly
     multiplatform experience with a rewrite from scratch.
   * [CubbyTower](https://github.com/utilForever/CubbyTower): a simple tower
     defense game using C++ with Entity Component System (ECS).
@@ -86,6 +89,8 @@ I hope this list can grow much more in the future:
     simulator using C++ with some reinforcement learning.
   * [HomeHearth](https://youtu.be/GrEWl8npL9Y): choose your hero, protect the
     town, before it's too late.
+  * [City Builder Game](https://github.com/PhiGei2000/CityBuilderGame): a simple
+    city-building game using C++ and OpenGL.
 
 * Engines and the like:
   * [Aether Engine](https://hadean.com/spatial-simulation/)

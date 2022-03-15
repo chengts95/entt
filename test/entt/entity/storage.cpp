@@ -1,6 +1,8 @@
-#include <exception>
+#include <algorithm>
+#include <cstddef>
 #include <iterator>
 #include <memory>
+#include <tuple>
 #include <type_traits>
 #include <unordered_set>
 #include <utility>
@@ -9,14 +11,18 @@
 #include <entt/entity/storage.hpp>
 #include "../common/throwing_allocator.hpp"
 #include "../common/throwing_type.hpp"
+#include "../common/tracked_memory_resource.hpp"
 
-struct empty_stable_type {};
+struct empty_stable_type {
+    static constexpr auto in_place_delete = true;
+};
 
 struct boxed_int {
     int value;
 };
 
 struct stable_type {
+    static constexpr auto in_place_delete = true;
     int value;
 };
 
@@ -70,18 +76,10 @@ struct crete_from_constructor {
 };
 
 template<>
-struct entt::component_traits<stable_type>: basic_component_traits {
+struct entt::component_traits<std::unordered_set<char>> {
     static constexpr auto in_place_delete = true;
-};
-
-template<>
-struct entt::component_traits<empty_stable_type>: basic_component_traits {
-    static constexpr auto in_place_delete = true;
-};
-
-template<>
-struct entt::component_traits<std::unordered_set<char>>: basic_component_traits {
-    static constexpr auto in_place_delete = true;
+    static constexpr auto ignore_if_empty = ENTT_IGNORE_IF_EMPTY;
+    static constexpr auto page_size = ENTT_PACKED_PAGE;
 };
 
 bool operator==(const boxed_int &lhs, const boxed_int &rhs) {
@@ -1156,7 +1154,7 @@ TEST(Storage, Iterable) {
 }
 
 TEST(Storage, ConstIterable) {
-    using iterator = typename entt::storage<boxed_int>::const_iterable::const_iterator;
+    using iterator = typename entt::storage<boxed_int>::const_iterable::iterator;
 
     static_assert(std::is_same_v<iterator::value_type, std::tuple<entt::entity, const boxed_int &>>);
     static_assert(std::is_same_v<iterator::value_type, std::tuple<entt::entity, const boxed_int &>>);
@@ -1198,7 +1196,7 @@ TEST(Storage, IterableIteratorConversion) {
     pool.emplace(entt::entity{3}, 42);
 
     typename entt::storage<boxed_int>::iterable::iterator it = pool.each().begin();
-    typename entt::storage<boxed_int>::const_iterable::const_iterator cit = it;
+    typename entt::storage<boxed_int>::const_iterable::iterator cit = it;
 
     static_assert(std::is_same_v<decltype(*it), std::tuple<entt::entity, boxed_int &>>);
     static_assert(std::is_same_v<decltype(*cit), std::tuple<entt::entity, const boxed_int &>>);
@@ -1759,3 +1757,39 @@ TEST(Storage, ThrowingComponent) {
     ASSERT_EQ(pool.at(0u), entt::entity{42});
     ASSERT_EQ(pool.get(entt::entity{42}), 42);
 }
+
+#if defined(ENTT_HAS_TRACKED_MEMORY_RESOURCE)
+
+TEST(Storage, NoUsesAllocatorConstruction) {
+    test::tracked_memory_resource memory_resource{};
+    entt::basic_storage<entt::entity, int, std::pmr::polymorphic_allocator<int>> pool{&memory_resource};
+    const entt::entity entity{};
+
+    pool.emplace(entity);
+    pool.erase(entity);
+    memory_resource.reset();
+    pool.emplace(entity, 0);
+
+    ASSERT_TRUE(pool.get_allocator().resource()->is_equal(memory_resource));
+    ASSERT_EQ(memory_resource.do_allocate_counter(), 0u);
+    ASSERT_EQ(memory_resource.do_deallocate_counter(), 0u);
+}
+
+TEST(Storage, UsesAllocatorConstruction) {
+    using string_type = typename test::tracked_memory_resource::string_type;
+
+    test::tracked_memory_resource memory_resource{};
+    entt::basic_storage<entt::entity, string_type, std::pmr::polymorphic_allocator<string_type>> pool{&memory_resource};
+    const entt::entity entity{};
+
+    pool.emplace(entity);
+    pool.erase(entity);
+    memory_resource.reset();
+    pool.emplace(entity, test::tracked_memory_resource::default_value);
+
+    ASSERT_TRUE(pool.get_allocator().resource()->is_equal(memory_resource));
+    ASSERT_GT(memory_resource.do_allocate_counter(), 0u);
+    ASSERT_EQ(memory_resource.do_deallocate_counter(), 0u);
+}
+
+#endif

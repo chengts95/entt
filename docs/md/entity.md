@@ -27,6 +27,7 @@
     * [Organizer](#organizer)
   * [Context variables](#context-variables)
     * [Aliased properties](#aliased-properties)
+  * [Component traits](#component-traits)
   * [Pointer stability](#pointer-stability)
     * [In-place delete](#in-place-delete)
     * [Hierarchies and the like](#hierarchies-and-the-like)
@@ -110,7 +111,7 @@ Even worse, some approaches tend to heavily affect other functionalities like
 the construction and destruction of components to favor iterations, even when it
 isn't strictly required. In fact, slightly worse performance along non-critical
 paths are the right price to pay to reduce memory usage and have overall better
-perfomance.<br/>
+performance.<br/>
 `EnTT` follows a completely different approach. It gets the best out from the
 basic data structures and gives users the possibility to pay more for higher
 performance where needed.
@@ -529,7 +530,7 @@ the observer, no matter if they matched the given rule.<br/>
 In the example above, whenever the component `sprite` of an entity is updated,
 the observer probes the entity itself to verify that it has at least `position`
 and has not `velocity` before to store it aside. If one of the two conditions of
-the filter isn't respected, the entity is discared, no matter what.
+the filter isn't respected, the entity is discarded, no matter what.
 
 A `where` clause accepts a theoretically unlimited number of types as well as
 multiple elements in the exclusion list. Moreover, every matcher can have its
@@ -773,7 +774,7 @@ These are the parameters that a free function or a member function can accept:
 
 * A possibly constant reference to a registry.
 * An `entt::basic_view` with any possible combination of types.
-* A possibly constant reference to any type `T` (that is, a context variable)
+* A possibly constant reference to any type `T` (that is, a context variable).
 
 The function type for free functions and decayed lambdas passed as parameters to
 `emplace` is `void(const void *, entt::registry &)` instead. The first parameter
@@ -870,37 +871,45 @@ use the preferred tool.
 ## Context variables
 
 Each registry has a _context_ associated with it, which is an `any` object map
-accessible by type for convenience.<br/>
+accessible by both type and _name_ for convenience. The _name_ isn't really a
+name though. In fact, it's a numeric id of type `id_type` to be used as a key
+for the variable. Any value is accepted, even runtime ones.<br/>
 The context is returned via the `ctx` functions and offers a minimal set of
 feature including the following:
 
 ```cpp
-// creates a new context variable initialized with the given values
+// creates a new context variable by type
 registry.ctx().emplace<my_type>(42, 'c');
 
-// gets the context variable as a non-const reference from a non-const registry
+// creates a new context variable with a name
+registry.ctx().emplace_hint<my_type>("my_variable"_hs, 42, 'c');
+
+// gets the context variable by type as a non-const reference from a non-const registry
 auto &var = registry.ctx().at<my_type>();
 
-// gets the context variable as a const reference from either a const or a non-const registry
-const auto &cvar = registry.ctx().at<const my_type>();
+// gets the context variable by name as a const reference from either a const or a non-const registry
+const auto &cvar = registry.ctx().at<const my_type>("my_variable"_hs);
 
-// unsets the context variable
+// resets the context variable by type
 registry.ctx().erase<my_type>();
+
+// resets the context variable associated with the given name
+registry.ctx().erase<my_type>("my_variable"_hs);
 ```
 
 The type of a context variable must be such that it's default constructible and
-can be moved.<br/>
+can be moved. If the supplied type doesn't match that of the variable when using
+a _name_, the operation will fail.<br/>
 For all users who want to use the context but don't want to create elements, the
 `contains` and `find` functions are also available:
 
 ```cpp
 const bool contains = registry.ctx().contains<my_type>();
-const my_type *value = registry.ctx().find<const my_type>();
+const my_type *value = registry.ctx().find<const my_type>("my_variable"_hs);
 ```
 
-Both support constant types, as does `at`. Furthermore, since the context is
-essentially a map of `any`s, it offers full support for references and allows
-users to hook externally managed objects to the registry itself.
+Also in this case, both functions support constant types and accept a _name_ for
+the variable to look up, as does `at`.
 
 ### Aliased properties
 
@@ -923,7 +932,7 @@ registry.ctx().emplace<const my_type &>(clock);
 
 From the point of view of the user, there are no differences between a variable
 that is managed by the registry and an aliased property. However, read-only
-variables aren't accesible as non-const references:
+variables aren't accessible as non-const references:
 
 ```cpp
 // read-only variables only support const access
@@ -931,7 +940,40 @@ const my_type *ptr = registry.ctx().find<const my_type>();
 const my_type &var = registry.ctx().at<const my_type>();
 ```
 
-Aliased properties can also be erased as it happens with any other variable.
+Aliased properties can be erased as it happens with any other variable.
+Similarly, they can also be associated with user-generated _names_ (or ids).
+
+## Component traits
+
+In `EnTT`, almost everything is customizable. Components are no exception.<br/>
+In this case, the _standardized_ way to access all component properties is the
+`component_traits` class.
+
+Various parts of the library access component properties through this class. It
+makes it possible to use any type as a component, as long as its specialization
+of `component_traits` implements all the required functionalities.<br/>
+The non-specialized version of this class contains the following members:
+
+* `in_place_delete`: `Type::in_place_delete` if present, false otherwise.
+* `ignore_if_empty`: `Type::ignore_if_empty` if present, `ENTT_IGNORE_IF_EMPTY`
+  otherwise.
+* `page_size`: `Type::page_size` if present, `ENTT_PACKED_PAGE` otherwise.
+
+Where `Type` is any type of component. All properties can be customized by
+specializing the above class and defining all its members, or by adding only
+those of interest to a component definition:
+
+```cpp
+struct transform {
+    static constexpr auto in_place_delete = true;
+    // ... other data members ...
+};
+```
+
+The `component_traits` class template will take care of correctly extracting the
+properties from the supplied type to pass them to the rest of the library.<br/>
+In the case of a direct specialization, the class is also _sfinae-friendly_. It
+supports single and multi type specializations as well as feature-based ones.
 
 ## Pointer stability
 
@@ -953,33 +995,9 @@ In other words, pointer stability is not automatic but is enabled on request.
 ### In-place delete
 
 The library offers out of the box support for in-place deletion, thus offering
-storage with completely stable pointers.<br/>
-This is achieved by specializing the `component_traits` class. The compile-time
-definition common to all components is the following:
-
-```cpp
-struct basic_component_traits {
-    static constexpr auto in_place_delete = false;
-    static constexpr auto ignore_if_empty = ENTT_IGNORE_IF_EMPTY;
-    static constexpr auto page_size = ENTT_PACKED_PAGE;
-};
-```
-
-Where `in_place_delete` instructs the library on the deletion policy for a given
-type while `ignore_if_empty` selectively disables empty type optimization and
-`page_size` dictates the storage behavior for non-empty types.<br/>
-The `component_traits` class template is _sfinae-friendly_, it supports single
-and multi type specializations as well as feature-based ones:
-
-```cpp
-template<>
-struct entt::component_traits<position>: basic_component_traits {
-    static constexpr auto in_place_delete = true;
-};
-```
-
-This will ensure in-place deletion for the `position` component without further
-user intervention.<br/>
+storage with completely stable pointers. This is achieved by specializing the
+`component_traits` class or by adding the required properties to the component
+definition when needed.<br/>
 Views and groups adapt accordingly when they detect a storage with a different
 deletion policy than the default. In particular:
 
@@ -1019,13 +1037,10 @@ advantages:
 
 ```cpp
 struct transform {
+    static constexpr auto in_place_delete = true;
+
     transform *parent;
     // ... other data members ...
-};
-
-template<>
-struct entt::component_traits<transform>: basic_component_traits {
-    static constexpr auto in_place_delete = true;
 };
 ```
 
@@ -1798,7 +1813,7 @@ also called _nested groups_, such as:
 Fortunately, these are also very common cases if not the most common ones.<br/>
 It allows to increase performance on a greater number of component combinations.
 
-Two nested groups are such that they own at least one componet type and the list
+Two nested groups are such that they own at least one component type and the list
 of component types involved by one of them is contained entirely in that of the
 other. More specifically, this applies independently to all component lists used
 to define a group.<br/>
@@ -2047,7 +2062,7 @@ groups or as free types with multi type views and groups in general.
 # Empty type optimization
 
 An empty type `T` is such that `std::is_empty_v<T>` returns true. They are also
-the same types for which _empty base optimization_ (EBO) is possibile.<br/>
+the same types for which _empty base optimization_ (EBO) is possible.<br/>
 `EnTT` handles these types in a special way, optimizing both in terms of
 performance and memory usage. However, this also has consequences that are worth
 mentioning.

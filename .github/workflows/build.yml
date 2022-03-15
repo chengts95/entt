@@ -16,16 +16,18 @@ jobs:
             exe: g++-8
           - pkg: g++-9
             exe: g++-9
-          - pkg: g++
-            exe: g++
+          - pkg: g++-10
+            exe: g++-10
           - pkg: clang-8
             exe: clang++-8
           - pkg: clang-9
             exe: clang++-9
           - pkg: clang-10
             exe: clang++-10
-          - pkg: clang
-            exe: clang++
+          - pkg: clang-11
+            exe: clang++-11
+          - pkg: clang-12
+            exe: clang++-12
 
     runs-on: ubuntu-latest
 
@@ -79,12 +81,14 @@ jobs:
 
     strategy:
       matrix:
-        toolset: [clang-cl, default, v141]
+        toolset: [default, v141, v142, clang-cl]
         include:
-          - toolset: clang-cl
-            toolset_option: -T"ClangCl"
           - toolset: v141
             toolset_option: -T"v141"
+          - toolset: v142
+            toolset_option: -T"v142"
+          - toolset: clang-cl
+            toolset_option: -T"ClangCl"
 
     runs-on: windows-latest
 
